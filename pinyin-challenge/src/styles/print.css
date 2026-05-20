@@ -1,0 +1,211 @@
+/**
+ * 打印专用样式
+ * 用于控制打印时的页面布局和元素显示
+ */
+
+/* ===== 打印媒体查询 ===== */
+@media print {
+  /* 基本打印设置 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  html,
+  body {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 12pt;
+    line-height: 1.5;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* ===== 隐藏非打印元素 ===== */
+  .no-print,
+  .no-print *,
+  button:not(.print-include),
+  nav,
+  header:not(.print-header),
+  footer:not(.print-footer),
+  aside,
+  .sidebar,
+  .toolbar,
+  .controls,
+  .settings-panel,
+  [data-no-print="true"] {
+    display: none !important;
+  }
+
+  /* 只在打印时显示的元素 */
+  .print-only {
+    display: block !important;
+  }
+
+  /* ===== 打印区域样式 ===== */
+  .printable-area,
+  .print-content {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    border: none;
+    background: white;
+  }
+
+  /* ===== 分页控制 ===== */
+  /* 在元素前分页 */
+  .page-break-before,
+  .print-page-break-before {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  /* 在元素后分页 */
+  .page-break-after,
+  .print-page-break-after {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  /* 避免在元素内分页 */
+  .page-break-inside-avoid,
+  .print-no-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* 表格分页处理 */
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  /* ===== 拼音练习特定样式 ===== */
+  /* 汉字格子 */
+  .pinyin-cell,
+  .character-cell {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* 练习行 */
+  .exercise-row {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* 田字格 */
+  .tian-zi-ge {
+    border: 1px solid #333 !important;
+  }
+
+  .tian-zi-ge::before,
+  .tian-zi-ge::after {
+    background: #ccc !important;
+  }
+
+  /* 拼音网格 */
+  .pinyin-grid {
+    border-collapse: collapse;
+  }
+
+  .pinyin-grid td,
+  .pinyin-grid th {
+    border: 1px solid #666 !important;
+    padding: 8px;
+  }
+
+  /* ===== 链接处理 ===== */
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  /* 可选：显示链接地址 */
+  a[href]::after {
+    content: none;
+  }
+
+  /* 如需显示链接，使用以下样式 */
+  .print-show-links a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+
+  /* ===== 图片处理 ===== */
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* ===== 标题处理 ===== */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    break-after: avoid;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* ===== 清除阴影和圆角 ===== */
+  .print-flat,
+  .card,
+  .panel {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* ===== 文本优化 ===== */
+  p,
+  li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* ===== A4 页面边距 ===== */
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  /* 首页特殊边距 */
+  @page :first {
+    margin-top: 15mm;
+  }
+}
+
+/* ===== 打印预览样式（body.printing 时生效）===== */
+body.printing {
+  overflow: hidden;
+}
+
+body.printing .no-print {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+body.printing .printable-area {
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+}
