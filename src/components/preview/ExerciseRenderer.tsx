@@ -128,21 +128,38 @@ function PinyinToHanziRenderer({ lines, style }: LineRendererProps) {
 
   return (
     <div className="space-y-2">
-      {lines.map((line, lineIndex) => (
-        <div
-          key={lineIndex}
-          className="flex flex-wrap items-end exercise-row"
-          style={{
-            gap: `${letterSpacing}px`,
-            minHeight: `${lineHeight}px`,
-            pageBreakInside: 'avoid',
-            breakInside: 'avoid',
-          }}
-        >
-          {line.chars.map((char, charIndex) => {
+      {lines.map((line, lineIndex) => {
+        // 判断是否为标题行(首行且后续有空行)
+        const isTitle = lineIndex === 0 && lines.length > 1 &&
+                       lines[1]?.chars.every(c => c.isNewline || c.isSpace);
+        // 判断是否为作者行(第二行且前后有空行)
+        const isAuthor = lineIndex === 1 && lines.length > 2 &&
+                        lines[2]?.chars.every(c => c.isNewline || c.isSpace);
+
+        return (
+          <div
+            key={lineIndex}
+            className={`flex flex-wrap items-end exercise-row ${isTitle || isAuthor ? 'justify-center' : ''}`}
+            style={{
+              gap: `${letterSpacing}px`,
+              minHeight: `${lineHeight}px`,
+              pageBreakInside: 'avoid',
+              breakInside: 'avoid',
+            }}
+          >
+            {line.chars.map((char, charIndex) => {
             // 缩进
             if (char.isIndent) {
               return <div key={charIndex} style={{ width: fontSize * 2 }} />;
+            }
+            // 空格：渲染空田字格
+            if (char.isSpace && !char.isIndent) {
+              return (
+                <div key={charIndex} className="flex flex-col items-center" style={{ width: `${cellWidth}px` }}>
+                  <div style={{ height: `${pinyinSize}px` }} />
+                  <TianZiGe size={gridSize} showReference={false} borderColor="#cccccc" />
+                </div>
+              );
             }
             // 标点符号
             if (char.isPunctuation) {
@@ -178,7 +195,8 @@ function PinyinToHanziRenderer({ lines, style }: LineRendererProps) {
             );
           })}
         </div>
-      ))}
+      );
+      })}
     </div>
   );
 }
@@ -195,20 +213,35 @@ function HanziToPinyinRenderer({ lines, style }: LineRendererProps) {
 
   return (
     <div className="space-y-2">
-      {lines.map((line, lineIndex) => (
-        <div
-          key={lineIndex}
-          className="flex flex-wrap items-end exercise-row"
-          style={{
-            gap: `${letterSpacing}px`,
-            minHeight: `${lineHeight}px`,
-            pageBreakInside: 'avoid',
-            breakInside: 'avoid',
-          }}
-        >
+      {lines.map((line, lineIndex) => {
+        const isTitle = lineIndex === 0 && lines.length > 1 &&
+                       lines[1]?.chars.every(c => c.isNewline || c.isSpace);
+        const isAuthor = lineIndex === 1 && lines.length > 2 &&
+                        lines[2]?.chars.every(c => c.isNewline || c.isSpace);
+
+        return (
+          <div
+            key={lineIndex}
+            className={`flex flex-wrap items-end exercise-row ${isTitle || isAuthor ? 'justify-center' : ''}`}
+            style={{
+              gap: `${letterSpacing}px`,
+              minHeight: `${lineHeight}px`,
+              pageBreakInside: 'avoid',
+              breakInside: 'avoid',
+            }}
+          >
           {line.chars.map((char, charIndex) => {
             if (char.isIndent) {
               return <div key={charIndex} style={{ width: fontSize * 2 }} />;
+            }
+            // 空格：渲染空拼音格
+            if (char.isSpace && !char.isIndent) {
+              return (
+                <div key={charIndex} className="flex flex-col items-center" style={{ width: `${cellWidth}px` }}>
+                  <SiXianSanGe width={gridWidth} height={gridHeight} showReference={false} borderColor="#cccccc" />
+                  <div style={{ height: `${charSize}px` }} />
+                </div>
+              );
             }
             if (char.isPunctuation) {
               return (
@@ -246,7 +279,8 @@ function HanziToPinyinRenderer({ lines, style }: LineRendererProps) {
             );
           })}
         </div>
-      ))}
+      );
+      })}
     </div>
   );
 }
@@ -262,20 +296,30 @@ function ReviewRenderer({ lines, style }: LineRendererProps) {
 
   return (
     <div className="space-y-4">
-      {lines.map((line, lineIndex) => (
-        <div
-          key={lineIndex}
-          className="flex flex-wrap items-end exercise-row"
-          style={{
-            gap: `${letterSpacing}px`,
-            minHeight: `${lineHeight}px`,
-            pageBreakInside: 'avoid',
-            breakInside: 'avoid',
-          }}
-        >
+      {lines.map((line, lineIndex) => {
+        const isTitle = lineIndex === 0 && lines.length > 1 &&
+                       lines[1]?.chars.every(c => c.isNewline || c.isSpace);
+        const isAuthor = lineIndex === 1 && lines.length > 2 &&
+                        lines[2]?.chars.every(c => c.isNewline || c.isSpace);
+
+        return (
+          <div
+            key={lineIndex}
+            className={`flex flex-wrap items-end exercise-row ${isTitle || isAuthor ? 'justify-center' : ''}`}
+            style={{
+              gap: `${letterSpacing}px`,
+              minHeight: `${lineHeight}px`,
+              pageBreakInside: 'avoid',
+              breakInside: 'avoid',
+            }}
+          >
           {line.chars.map((char, charIndex) => {
             if (char.isIndent) {
               return <div key={charIndex} style={{ width: fontSize * 2 }} />;
+            }
+            // 空格：不渲染格子,仅占位
+            if (char.isSpace && !char.isIndent) {
+              return <div key={charIndex} style={{ width: `${cellWidth}px` }} />;
             }
             if (char.isPunctuation) {
               return (
@@ -313,7 +357,8 @@ function ReviewRenderer({ lines, style }: LineRendererProps) {
             );
           })}
         </div>
-      ))}
+      );
+      })}
     </div>
   );
 }

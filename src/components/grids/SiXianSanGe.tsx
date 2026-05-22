@@ -21,6 +21,8 @@ interface SiXianSanGeProps {
   referenceOpacity?: number;
   /** 线条颜色 */
   lineColor?: string;
+  /** 边框颜色(用于空格等特殊渲染) */
+  borderColor?: string;
   /** 中间线颜色（用于区分主要书写区） */
   middleLineColor?: string;
   /** 参考文字颜色 */
@@ -36,11 +38,13 @@ export function SiXianSanGe({
   showReference = false,
   referenceOpacity = 0.3,
   lineColor = '#333333',
+  borderColor,
   middleLineColor = '#999999',
   referenceColor = '#666666',
   className = '',
 }: SiXianSanGeProps) {
   const strokeWidth = 1;
+  const actualLineColor = borderColor || lineColor;
 
   // 计算各层高度（上:中:下 = 1:2:1）
   const unitHeight = height / 4;
@@ -67,7 +71,7 @@ export function SiXianSanGe({
           y1={line1Y + strokeWidth / 2}
           x2={width}
           y2={line1Y + strokeWidth / 2}
-          stroke={lineColor}
+          stroke={actualLineColor}
           strokeWidth={strokeWidth}
         />
 
@@ -99,7 +103,7 @@ export function SiXianSanGe({
           y1={line4Y - strokeWidth / 2}
           x2={width}
           y2={line4Y - strokeWidth / 2}
-          stroke={lineColor}
+          stroke={actualLineColor}
           strokeWidth={strokeWidth}
         />
 

@@ -178,11 +178,11 @@ export function TextInput({
         onChange={handleChange}
         onPaste={handlePaste}
         placeholder={placeholder}
-        rows={6}
         disabled={isLoading}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-y
                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                   text-gray-800 placeholder-gray-400 disabled:bg-gray-100"
+                   text-gray-800 placeholder-gray-400 disabled:bg-gray-100
+                   min-h-[150px]"
       />
 
       {/* 错误提示 */}

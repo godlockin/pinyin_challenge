@@ -4,7 +4,7 @@
  */
 
 import type { Settings, PinyinPair } from '../../types';
-import { TextInput, ModeSelector, GridSelector, StyleSettingsPanel } from '../settings';
+import { TextInput, ModeSelector, GridSelector, StyleSettingsPanel, PoetrySearch, VocabularySearch } from '../settings';
 
 interface RightPanelProps {
   /** 当前设置 */
@@ -44,6 +44,16 @@ export function RightPanel({ settings, onSettingsChange, onGenerate }: RightPane
         <TextInput
           value={settings.inputText}
           onChange={handleTextChange}
+        />
+
+        {/* 古诗词库 */}
+        <PoetrySearch
+          onSelect={(content) => handleTextChange(content, undefined)}
+        />
+
+        {/* 字词句练习 */}
+        <VocabularySearch
+          onSelect={(content) => handleTextChange(content, undefined)}
         />
 
         {/* 分隔线 */}

@@ -106,9 +106,22 @@ export function parseText(
           isSpace: true,
           isIndent: true,
         });
+        i = j;
+      } else {
+        // 单个空格或非段首空格,每个空格单独渲染
+        for (let k = 0; k < spaceCount; k++) {
+          result.push({
+            char: ' ',
+            pinyin: '',
+            isPolyphonic: false,
+            isPunctuation: false,
+            isNewline: false,
+            isSpace: true,
+            isIndent: false,
+          });
+        }
+        i = j;
       }
-
-      i = j;
       continue;
     }
 
