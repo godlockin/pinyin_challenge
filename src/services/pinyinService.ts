@@ -62,6 +62,13 @@ export async function initPinyinDictionaries(): Promise<void> {
       // 2. 诗词短语 - 整句绑定（addDict 优先级最高）
       addDict(phraseDict);
 
+      // 调试: 暴露到 window (仅开发环境)
+      if (import.meta.env.DEV && typeof window !== 'undefined') {
+        (window as unknown as Record<string, unknown>).__pinyin = pinyin;
+        (window as unknown as Record<string, unknown>).__convertToPinyin = convertToPinyin;
+        (window as unknown as Record<string, unknown>).__polyphonicMap = polyphonicMap;
+      }
+
       console.log(
         `[pinyin] 字典已加载: 多音字 ${Object.keys(polyphonicMap).length} 个, ` +
         `诗词短语 ${Object.keys(phraseDict).length} 条`
@@ -93,13 +100,23 @@ export function isPolyphonic(char: string): boolean {
 /**
  * 获取多音字的所有读音
  * 优先使用 chinese-dictionary 提供的候选列表
+ * 注: customPinyin 的 replace 模式会改默认读音，但不会动 multiple 列表顺序
+ *     因此 getCharacterInfo 取的 [0] 仍是字典原序，对常见字会出现"候选首项≠默认音"
+ *     修复方案: 如果默认音 polyphonicMap[char] 不在 [0]，把默认音挪到第一位
  */
 export function getAllPinyinReadings(char: string, toneType: ToneType = 'symbol'): string[] {
   if (!isChinese(char)) return [];
 
   // 优先从缓存取（教学场景：笔画、部首、结构信息更全）
   if (polyphonicOptionsCache.has(char)) {
-    return applyToneType(polyphonicOptionsCache.get(char)!, toneType);
+    const options = polyphonicOptionsCache.get(char)!;
+    // 同步默认音到第一位（保证 getCharacterInfo 取得的是 polyphonicMap 中的值）
+    const preferred = polyphonicMap[char];
+    if (preferred && options[0] !== preferred && options.includes(preferred)) {
+      const reordered = [preferred, ...options.filter(p => p !== preferred)];
+      return applyToneType(reordered, toneType);
+    }
+    return applyToneType(options, toneType);
   }
 
   const options = {

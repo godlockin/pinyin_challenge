@@ -21,7 +21,6 @@ export {
   convertTextToPinyin,
   removeTone,
   generateWrongPinyin,
-  customPinyin,
 } from './pinyinService';
 
 export {
