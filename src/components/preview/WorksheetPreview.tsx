@@ -110,6 +110,7 @@ export function WorksheetPreview({
             style={settings.style}
             showAnswer={showAnswer}
             pinyinPairs={settings.pinyinPairs}
+            gridType={settings.gridType}
           />
         </div>
       </div>

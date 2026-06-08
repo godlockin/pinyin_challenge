@@ -50,7 +50,7 @@ function App() {
                 targetRef={printRef}
                 onPrint={handlePrint}
                 filename="pinyin-worksheet"
-                showImageExport={false}
+                showImageExport={true}
               />
             </div>
           </div>
@@ -70,6 +70,12 @@ function App() {
         <RightPanel
           settings={settings}
           onSettingsChange={setSettings}
+          onGenerate={() => {
+            const el = printRef.current;
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }}
         />
       }
     />

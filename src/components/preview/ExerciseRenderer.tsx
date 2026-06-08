@@ -5,11 +5,13 @@
  */
 
 import { useMemo } from 'react';
-import { ExerciseMode } from '../../types';
-import type { StyleSettings, PinyinPair } from '../../types';
+import { ExerciseMode, GridType } from '../../types';
+import type { StyleSettings, PinyinPair, GridType as GridTypeT } from '../../types';
 import { TianZiGe } from '../grids/TianZiGe';
 import { SiXianSanGe } from '../grids/SiXianSanGe';
+import { HengXian } from '../grids/HengXian';
 import { PinyinDisplay, PinyinOptions, PinyinCorrectionItem } from '../grids/PinyinDisplay';
+import { generateWrongPinyin } from '../../services/pinyinService';
 import {
   parseText,
   splitIntoFixedGridLines,
@@ -28,6 +30,8 @@ interface ExerciseRendererProps {
   className?: string;
   /** 从文件解析的拼音配对（优先使用） */
   pinyinPairs?: PinyinPair[];
+  /** 格式类型 */
+  gridType?: GridTypeT;
 }
 
 export function ExerciseRenderer({
@@ -37,6 +41,7 @@ export function ExerciseRenderer({
   showAnswer = false,
   className = '',
   pinyinPairs,
+  gridType,
 }: ExerciseRendererProps) {
   const { fontSize, letterSpacing } = style;
 
@@ -79,9 +84,9 @@ export function ExerciseRenderer({
   const content = useMemo(() => {
     switch (mode) {
       case ExerciseMode.PinyinToHanzi:
-        return <PinyinToHanziRenderer lines={lines} style={style} />;
+        return <PinyinToHanziRenderer lines={lines} style={style} gridType={gridType} />;
       case ExerciseMode.HanziToPinyin:
-        return <HanziToPinyinRenderer lines={lines} style={style} />;
+        return <HanziToPinyinRenderer lines={lines} style={style} gridType={gridType} />;
       case ExerciseMode.Review:
         return <ReviewRenderer lines={lines} style={style} />;
       case ExerciseMode.PolyphonicChoice:
@@ -91,7 +96,7 @@ export function ExerciseRenderer({
       default:
         return <div className="text-gray-400">请选择练习模式</div>;
     }
-  }, [mode, lines, parsedChars, style, showAnswer]);
+  }, [mode, lines, parsedChars, style, showAnswer, gridType]);
 
   if (!inputText || inputText.trim() === '') {
     return (
@@ -108,6 +113,7 @@ export function ExerciseRenderer({
 interface LineRendererProps {
   lines: ParsedLine[];
   style: StyleSettings;
+  gridType?: GridTypeT;
 }
 
 interface CharRendererProps {
@@ -119,12 +125,26 @@ interface CharRendererProps {
 /**
  * 看拼音写汉字
  */
-function PinyinToHanziRenderer({ lines, style }: LineRendererProps) {
+function PinyinToHanziRenderer({ lines, style, gridType }: LineRendererProps) {
   const { fontSize, letterSpacing, lineHeight } = style;
   const gridSize = fontSize * 2;
   const pinyinSize = fontSize * 0.6;
-  // 每个字符单元的宽度 = 田字格宽度（拼音居中显示在上方）
   const cellWidth = gridSize;
+
+  // 根据格式类型渲染格子
+  const renderGrid = () => {
+    switch (gridType) {
+      case GridType.SiXianSanGe:
+        return <SiXianSanGe width={gridSize} height={fontSize * 1.2} showReference={false} />;
+      case GridType.HorizontalLine:
+        return <HengXian width={gridSize} lineHeight={gridSize} rows={1} />;
+      case GridType.Blank:
+        return <div style={{ width: `${gridSize}px`, height: `${gridSize}px` }} />;
+      case GridType.TianZiGe:
+      default:
+        return <TianZiGe size={gridSize} showReference={false} />;
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -202,7 +222,7 @@ function PinyinToHanziRenderer({ lines, style }: LineRendererProps) {
                   centered
                 />
                 <div style={{ height: '6px', width: '1px', background: '#fff' }} /> {/* 1px 宽白色背景,让 html2canvas 看到 */}
-                <TianZiGe size={gridSize} showReference={false} />
+                {renderGrid()}
               </div>
             );
           })}
@@ -216,12 +236,27 @@ function PinyinToHanziRenderer({ lines, style }: LineRendererProps) {
 /**
  * 看汉字写拼音
  */
-function HanziToPinyinRenderer({ lines, style }: LineRendererProps) {
+function HanziToPinyinRenderer({ lines, style, gridType }: LineRendererProps) {
   const { fontSize, letterSpacing, lineHeight } = style;
   const charSize = fontSize * 1.5;
   const gridWidth = fontSize * 3;
   const gridHeight = fontSize * 1.2;
   const cellWidth = gridWidth;
+
+  // 根据格式类型渲染书写格
+  const renderWritingGrid = () => {
+    switch (gridType) {
+      case GridType.TianZiGe:
+        return <TianZiGe size={gridHeight} showReference={false} />;
+      case GridType.HorizontalLine:
+        return <HengXian width={gridWidth} lineHeight={gridHeight} rows={1} />;
+      case GridType.Blank:
+        return <div style={{ width: `${gridWidth}px`, height: `${gridHeight}px` }} />;
+      case GridType.SiXianSanGe:
+      default:
+        return <SiXianSanGe width={gridWidth} height={gridHeight} showReference={false} />;
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -282,7 +317,7 @@ function HanziToPinyinRenderer({ lines, style }: LineRendererProps) {
                   boxSizing: 'border-box',
                 }}
               >
-                <SiXianSanGe width={gridWidth} height={gridHeight} showReference={false} />
+                {renderWritingGrid()}
                 <span
                   className="font-serif text-center"
                   style={{
@@ -438,28 +473,51 @@ function PolyphonicChoiceRenderer({ chars, style, showAnswer }: CharRendererProp
 }
 
 /**
+ * 简单确定性哈希：对字符串生成一个 0~1 之间的数值
+ */
+function deterministicHash(str: string, index: number): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  hash = ((hash << 5) - hash + index) | 0;
+  return (Math.abs(hash) % 1000) / 1000;
+}
+
+/**
  * 拼音纠错
  */
 function PinyinCorrectionRenderer({ chars, style, showAnswer }: CharRendererProps) {
   const { fontSize, letterSpacing, charsPerLine } = style;
 
-  // 生成带有随机错误的数据
+  // 生成带有确定性错误的数据（基于文本内容哈希）
   const correctionItems = useMemo(() => {
-    return chars
-      .filter((char) => !char.isPunctuation && !char.isNewline && !char.isSpace && !char.isIndent)
-      .map((char) => {
-        const shouldBeWrong = Math.random() < 0.3;
-        let displayPinyin = char.pinyin;
+    const filtered = chars.filter(
+      (char) => !char.isPunctuation && !char.isNewline && !char.isSpace && !char.isIndent
+    );
+    return filtered.map((char, idx) => {
+      const hashVal = deterministicHash(char.char + char.pinyin, idx);
+      const shouldBeWrong = hashVal < 0.3;
+      let displayPinyin = char.pinyin;
 
-        if (shouldBeWrong && char.pinyinOptions && char.pinyinOptions.length > 1) {
+      if (shouldBeWrong) {
+        // 优先从多音字候选中取错误拼音，否则使用 generateWrongPinyin
+        if (char.pinyinOptions && char.pinyinOptions.length > 1) {
           const otherOptions = char.pinyinOptions.filter((p) => p !== char.pinyin);
           if (otherOptions.length > 0) {
-            displayPinyin = otherOptions[0];
+            const wrongIdx = Math.floor(deterministicHash(char.char, idx + 100) * otherOptions.length);
+            displayPinyin = otherOptions[wrongIdx];
+          }
+        } else {
+          const wrong = generateWrongPinyin(char.pinyin);
+          if (wrong !== char.pinyin) {
+            displayPinyin = wrong;
           }
         }
+      }
 
-        return { ...char, displayPinyin, isWrong: displayPinyin !== char.pinyin };
-      });
+      return { ...char, displayPinyin, isWrong: displayPinyin !== char.pinyin };
+    });
   }, [chars]);
 
   // 分行
