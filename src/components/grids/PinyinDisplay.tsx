@@ -40,11 +40,10 @@ export function PinyinDisplay({
           letterSpacing: `${letterSpacing}px`,
           lineHeight: `${fontSize}px`,
           height: `${fontSize}px`,
-          paddingBottom: '4px',
           background: '#fff',
           fontFamily: 'Times New Roman, STSong, SimSun, serif',
           boxSizing: 'border-box',
-          overflow: 'hidden',
+          overflow: 'visible',
           whiteSpace: 'nowrap',
         }}
       >

@@ -180,6 +180,7 @@ function PinyinToHanziRenderer({ lines, style }: LineRendererProps) {
             }
             // 汉字：拼音+田字格作为一个整体
             // ⚠️ 不用 flex 布局:html2canvas 截图 SVG 时,flex items-center 会把子项垂直压缩
+            // 拼音区域和 SVG 之间必须有足够间距,避免 SVG 顶部覆盖拼音
             return (
               <div
                 key={charIndex}
@@ -187,13 +188,25 @@ function PinyinToHanziRenderer({ lines, style }: LineRendererProps) {
                   width: `${cellWidth}px`,
                   boxSizing: 'border-box',
                   textAlign: 'center',
+                  paddingTop: `${pinyinSize + 4}px`,
+                  position: 'relative',
                 }}
               >
-                <PinyinDisplay
-                  pinyin={char.pinyin}
-                  fontSize={pinyinSize}
-                  centered
-                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '0',
+                    left: 0,
+                    right: 0,
+                    height: `${pinyinSize + 4}px`,
+                  }}
+                >
+                  <PinyinDisplay
+                    pinyin={char.pinyin}
+                    fontSize={pinyinSize}
+                    centered
+                  />
+                </div>
                 <TianZiGe size={gridSize} showReference={false} />
               </div>
             );
@@ -347,13 +360,25 @@ function ReviewRenderer({ lines, style }: LineRendererProps) {
             return (
               <div
                 key={charIndex}
-                className="flex flex-col items-center"
                 style={{
                   width: `${cellWidth}px`,
                   boxSizing: 'border-box',
+                  textAlign: 'center',
+                  paddingTop: `${pinyinSize + 4}px`,
+                  position: 'relative',
                 }}
               >
-                <PinyinDisplay pinyin={char.pinyin} fontSize={pinyinSize} centered />
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '0',
+                    left: 0,
+                    right: 0,
+                    height: `${pinyinSize + 4}px`,
+                  }}
+                >
+                  <PinyinDisplay pinyin={char.pinyin} fontSize={pinyinSize} centered />
+                </div>
                 <span
                   className="font-serif text-center"
                   style={{
