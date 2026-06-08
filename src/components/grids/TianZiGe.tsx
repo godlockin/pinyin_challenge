@@ -42,7 +42,7 @@ export function TianZiGe({
   const pinyinHeight = showPinyin && pinyin ? 20 : 0;
 
   return (
-    <div className={`inline-flex flex-col items-center ${className}`}>
+    <div className={className} style={{ display: 'block', textAlign: 'center' }}>
       {/* 拼音标注 */}
       {showPinyin && pinyin && (
         <div

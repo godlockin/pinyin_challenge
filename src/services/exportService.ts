@@ -35,6 +35,11 @@ const defaultOptions: Required<ExportOptions> = {
 
 /**
  * 将 HTML 元素导出为 PDF（按行分页，避免截断）
+ * 实现策略:
+ *   1. 清除 worksheet-preview 的 transform: scale(),避免 html2canvas SVG 坐标错位
+ *   2. 截取 header (清空 exercise-renderer)
+ *   3. 逐行克隆截图(避免 transform 污染)
+ *   4. 按行累积高度分页
  */
 export async function exportToPDF(
   element: HTMLElement,
@@ -42,12 +47,14 @@ export async function exportToPDF(
 ): Promise<void> {
   const config = { ...defaultOptions, ...options };
 
+  let worksheetEl: HTMLElement | null = null;
+  let originalTransform = '';
+  let originalTransformOrigin = '';
+
   try {
-    // 找到所有练习行
     const rows = element.querySelectorAll('.exercise-row');
 
     if (rows.length === 0) {
-      // 没有练习行，直接导出整个元素
       await exportSinglePage(element, config);
       return;
     }
@@ -64,143 +71,154 @@ export async function exportToPDF(
     const pageHeight = isLandscape ? A4_WIDTH_MM : A4_HEIGHT_MM;
     const contentWidth = pageWidth - MARGIN_LEFT - MARGIN_RIGHT;
     const contentStartY = MARGIN_TOP;
-    const contentEndY = pageHeight - MARGIN_BOTTOM;
-    const availableHeight = contentEndY - contentStartY;
+    const availableHeight = pageHeight - MARGIN_TOP - MARGIN_BOTTOM;
 
-    // 获取标题区域（练习内容之前的部分）
-    const headerElement = element.querySelector('.worksheet-preview');
+    // 清除 worksheet-preview 的 transform: scale()
+    worksheetEl = (element.classList.contains('worksheet-preview')
+      ? element
+      : element.querySelector('.worksheet-preview')) as HTMLElement | null;
+    originalTransform = worksheetEl?.style.transform || '';
+    originalTransformOrigin = worksheetEl?.style.transformOrigin || '';
+    if (worksheetEl) {
+      worksheetEl.style.transform = 'none';
+      worksheetEl.style.transformOrigin = 'top left';
+    }
+
+    // 截取 header（克隆 + 清空 exercise-renderer + 移除 min-height）
     let headerCanvas: HTMLCanvasElement | null = null;
-    let headerHeight = 0;
-
-    if (headerElement) {
-      // 克隆并只保留标题部分
-      const headerClone = headerElement.cloneNode(true) as HTMLElement;
-      const exerciseRenderer = headerClone.querySelector('.exercise-renderer');
-      if (exerciseRenderer) {
-        exerciseRenderer.innerHTML = '';
-      }
-
+    if (worksheetEl) {
+      const headerClone = worksheetEl.cloneNode(true) as HTMLElement;
+      const ex = headerClone.querySelector('.exercise-renderer');
+      if (ex) ex.innerHTML = '';
+      headerClone.style.minHeight = '0';
+      headerClone.style.height = 'auto';
       document.body.appendChild(headerClone);
       headerClone.style.position = 'absolute';
       headerClone.style.left = '-9999px';
-      headerClone.style.width = '595px';
-
+      headerClone.style.width = `${worksheetEl.offsetWidth}px`;
+      headerClone.style.transform = 'none';
       headerCanvas = await html2canvas(headerClone, {
         scale: config.scale,
         backgroundColor: '#ffffff',
         logging: false,
       });
-
       document.body.removeChild(headerClone);
+    }
+    const headerHeight = headerCanvas ? headerCanvas.height * (contentWidth / headerCanvas.width) : 0;
 
-      // 计算标题区域在 PDF 中的高度
-      const ratio = contentWidth / headerCanvas.width;
-      headerHeight = headerCanvas.height * ratio;
+    // 逐行克隆截图
+    const rowImages: Array<{ canvas: HTMLCanvasElement; heightMm: number }> = [];
+    for (const row of Array.from(rows)) {
+      const rowClone = row.cloneNode(true) as HTMLElement;
+      document.body.appendChild(rowClone);
+      rowClone.style.position = 'absolute';
+      rowClone.style.left = '-9999px';
+      rowClone.style.transform = 'none';
+      const rowWidth = row.getBoundingClientRect().width || 515;
+      rowClone.style.width = `${rowWidth}px`;
+
+      const rowCanvas = await html2canvas(rowClone, {
+        scale: config.scale,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: rowWidth,
+        windowWidth: rowWidth,
+      });
+      document.body.removeChild(rowClone);
+
+      rowImages.push({
+        canvas: rowCanvas,
+        heightMm: rowCanvas.height * (contentWidth / rowCanvas.width),
+      });
     }
 
-    // 计算每行的高度并分页
-    const rowHeights: number[] = [];
-    for (const row of rows) {
-      const rect = row.getBoundingClientRect();
-      const ratio = contentWidth / 515; // 515 是内容区域宽度
-      rowHeights.push(rect.height * ratio);
-    }
-
-    // 分页：确保每行完整显示
-    const pages: number[][] = [];
-    let currentPage: number[] = [];
+    // 分页:每页累积 header + 行,超过 availableHeight 则换页
+    type Page = { rowIndices: number[]; };
+    const pages: Page[] = [];
+    let currentPage: Page = { rowIndices: [] };
     let currentHeight = headerHeight;
-
-    for (let i = 0; i < rowHeights.length; i++) {
-      const rowHeight = rowHeights[i];
-
-      if (currentHeight + rowHeight > availableHeight && currentPage.length > 0) {
-        // 当前页满了，开始新页
+    for (let i = 0; i < rowImages.length; i++) {
+      const h = rowImages[i].heightMm;
+      if (currentHeight + h > availableHeight && currentPage.rowIndices.length > 0) {
         pages.push(currentPage);
-        currentPage = [i];
-        currentHeight = rowHeight;
+        currentPage = { rowIndices: [i] };
+        currentHeight = h;
       } else {
-        currentPage.push(i);
-        currentHeight += rowHeight;
+        currentPage.rowIndices.push(i);
+        currentHeight += h;
       }
     }
+    if (currentPage.rowIndices.length > 0) pages.push(currentPage);
 
-    if (currentPage.length > 0) {
-      pages.push(currentPage);
-    }
+    // 渲染每页
+    for (let p = 0; p < pages.length; p++) {
+      if (p > 0) pdf.addPage();
+      let y = contentStartY;
 
-    // 渲染每一页
-    for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
-      if (pageIndex > 0) {
-        pdf.addPage();
-      }
-
-      const pageRows = pages[pageIndex];
-      let currentY = contentStartY;
-
-      // 第一页添加标题
-      if (pageIndex === 0 && headerCanvas) {
+      // 第一页加 header
+      if (p === 0 && headerCanvas) {
         const ratio = contentWidth / headerCanvas.width;
-        const imgHeight = headerCanvas.height * ratio;
-
+        const h = headerCanvas.height * ratio;
         pdf.addImage(
-          headerCanvas.toDataURL('image/jpeg', config.quality),
-          'JPEG',
+          headerCanvas.toDataURL('image/png'),
+          'PNG',
           MARGIN_LEFT,
-          currentY,
+          y,
           contentWidth,
-          imgHeight
+          h,
+          undefined,
+          'FAST'
         );
-        currentY += imgHeight;
+        y += h;
       }
 
-      // 渲染当前页的行
-      for (const rowIndex of pageRows) {
-        const row = rows[rowIndex] as HTMLElement;
-
-        const rowCanvas = await html2canvas(row, {
-          scale: config.scale,
-          backgroundColor: '#ffffff',
-          logging: false,
-        });
-
-        const ratio = contentWidth / rowCanvas.width;
-        const imgHeight = rowCanvas.height * ratio;
-
+      // 渲染当前页的所有行
+      for (const idx of pages[p].rowIndices) {
+        const img = rowImages[idx];
         pdf.addImage(
-          rowCanvas.toDataURL('image/jpeg', config.quality),
-          'JPEG',
+          img.canvas.toDataURL('image/png'),
+          'PNG',
           MARGIN_LEFT,
-          currentY,
+          y,
           contentWidth,
-          imgHeight
+          img.heightMm,
+          undefined,
+          'FAST'
         );
-
-        currentY += imgHeight;
+        y += img.heightMm;
       }
 
-      // 添加页脚（页码）- 使用图片方式避免字体问题
+      // 页脚
       const footerCanvas = createTextCanvas(
-        `${pageIndex + 1} / ${pages.length}`,
+        `${p + 1} / ${pages.length}`,
         12,
         '#999999'
       );
-      const footerRatio = 30 / footerCanvas.width;
       pdf.addImage(
         footerCanvas.toDataURL('image/png'),
         'PNG',
         pageWidth / 2 - 15,
         pageHeight - MARGIN_BOTTOM + 2,
         30,
-        footerCanvas.height * footerRatio
+        footerCanvas.height * (30 / footerCanvas.width)
       );
     }
 
-    // 保存文件
+    // 恢复 transform
+    if (worksheetEl) {
+      worksheetEl.style.transform = originalTransform || '';
+      worksheetEl.style.transformOrigin = originalTransformOrigin || '';
+    }
+
+    // 保存
     const dateStr = new Date().toISOString().slice(0, 10);
     pdf.save(`${config.filename}_${dateStr}.pdf`);
   } catch (error) {
     console.error('PDF 导出失败:', error);
+    if (worksheetEl) {
+      worksheetEl.style.transform = originalTransform || '';
+      worksheetEl.style.transformOrigin = originalTransformOrigin || '';
+    }
     throw new Error(`PDF 导出失败: ${error instanceof Error ? error.message : '未知错误'}`);
   }
 }
@@ -271,8 +289,6 @@ async function exportSinglePage(
 
 /**
  * 将 HTML 元素导出为图片
- * @param element 要导出的 HTML 元素
- * @param filename 文件名
  */
 export async function exportToImage(
   element: HTMLElement,
@@ -287,7 +303,6 @@ export async function exportToImage(
       logging: false,
     });
 
-    // 创建下载链接
     const link = document.createElement('a');
     const timestamp = new Date().toISOString().slice(0, 10);
     link.download = `${filename}_${timestamp}.png`;

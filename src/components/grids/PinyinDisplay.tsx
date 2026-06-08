@@ -30,18 +30,27 @@ export function PinyinDisplay({
   className = '',
 }: PinyinDisplayProps) {
   return (
-    <span
-      className={`font-serif inline-block ${centered ? 'text-center' : ''} ${className}`}
-      style={{
-        fontSize: `${fontSize}px`,
-        color,
-        fontWeight,
-        letterSpacing: `${letterSpacing}px`,
-        fontFamily: 'Times New Roman, STSong, SimSun, serif',
-      }}
-    >
-      {pinyin}
-    </span>
+    <div className={className}>
+      <div
+        className={`font-serif ${centered ? 'text-center' : ''}`}
+        style={{
+          fontSize: `${fontSize}px`,
+          color,
+          fontWeight,
+          letterSpacing: `${letterSpacing}px`,
+          lineHeight: `${fontSize}px`,
+          height: `${fontSize}px`,
+          paddingBottom: '4px',
+          background: '#fff',
+          fontFamily: 'Times New Roman, STSong, SimSun, serif',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {pinyin}
+      </div>
+    </div>
   );
 }
 
@@ -83,9 +92,11 @@ export function PinyinAnnotation({
 }: PinyinAnnotationProps) {
   return (
     <div
-      className={`inline-flex flex-col items-center ${className}`}
+      className={className}
       style={{
         minWidth: `${charFontSize}px`,
+        display: 'block',
+        textAlign: 'center',
       }}
     >
       {/* 拼音 */}

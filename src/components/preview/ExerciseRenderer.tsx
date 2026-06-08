@@ -179,11 +179,15 @@ function PinyinToHanziRenderer({ lines, style }: LineRendererProps) {
               );
             }
             // 汉字：拼音+田字格作为一个整体
+            // ⚠️ 不用 flex 布局:html2canvas 截图 SVG 时,flex items-center 会把子项垂直压缩
             return (
               <div
                 key={charIndex}
-                className="flex flex-col items-center"
-                style={{ width: `${cellWidth}px` }}
+                style={{
+                  width: `${cellWidth}px`,
+                  boxSizing: 'border-box',
+                  textAlign: 'center',
+                }}
               >
                 <PinyinDisplay
                   pinyin={char.pinyin}
@@ -262,13 +266,17 @@ function HanziToPinyinRenderer({ lines, style }: LineRendererProps) {
               <div
                 key={charIndex}
                 className="flex flex-col items-center"
-                style={{ width: `${cellWidth}px` }}
+                style={{
+                  width: `${cellWidth}px`,
+                  boxSizing: 'border-box',
+                }}
               >
                 <SiXianSanGe width={gridWidth} height={gridHeight} showReference={false} />
                 <span
                   className="font-serif text-center"
                   style={{
                     fontSize: `${charSize}px`,
+                    lineHeight: `${charSize}px`,
                     fontFamily: 'KaiTi, STKaiti, SimKai, serif',
                     width: `${cellWidth}px`,
                   }}
@@ -340,13 +348,17 @@ function ReviewRenderer({ lines, style }: LineRendererProps) {
               <div
                 key={charIndex}
                 className="flex flex-col items-center"
-                style={{ width: `${cellWidth}px` }}
+                style={{
+                  width: `${cellWidth}px`,
+                  boxSizing: 'border-box',
+                }}
               >
                 <PinyinDisplay pinyin={char.pinyin} fontSize={pinyinSize} centered />
                 <span
                   className="font-serif text-center"
                   style={{
                     fontSize: `${charSize}px`,
+                    lineHeight: `${charSize}px`,
                     fontFamily: 'KaiTi, STKaiti, SimKai, serif',
                     width: `${cellWidth}px`,
                   }}

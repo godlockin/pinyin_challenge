@@ -58,7 +58,7 @@ export function SiXianSanGe({
   const line4Y = height;                      // 底线
 
   return (
-    <div className={`inline-block ${className}`}>
+    <div className={className} style={{ display: 'block' }}>
       <svg
         width={width}
         height={height}
@@ -216,7 +216,7 @@ export function SiXianSanGeContinuous({
   const line4Y = height;
 
   return (
-    <div className={`inline-block ${className}`}>
+    <div className={className} style={{ display: 'block' }}>
       <svg
         width={width}
         height={height}
