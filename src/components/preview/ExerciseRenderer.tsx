@@ -12,7 +12,7 @@ import { SiXianSanGe } from '../grids/SiXianSanGe';
 import { PinyinDisplay, PinyinOptions, PinyinCorrectionItem } from '../grids/PinyinDisplay';
 import {
   parseText,
-  splitIntoLines,
+  splitIntoFixedGridLines,
   type ParsedChar,
   type ParsedLine,
 } from '../../services/textParserService';
@@ -70,9 +70,9 @@ export function ExerciseRenderer({
     }
   }, [mode]);
 
-  // 智能分行
+  // 智能分行(固定网格:每行 N 格,空格用隐形占位填满)
   const lines = useMemo(() => {
-    return splitIntoLines(parsedChars, CONTENT_WIDTH, fontSize, letterSpacing, renderMode);
+    return splitIntoFixedGridLines(parsedChars, CONTENT_WIDTH, fontSize, letterSpacing, renderMode);
   }, [parsedChars, fontSize, letterSpacing, renderMode]);
 
   // 根据模式渲染
@@ -152,12 +152,17 @@ function PinyinToHanziRenderer({ lines, style }: LineRendererProps) {
             if (char.isIndent) {
               return <div key={charIndex} style={{ width: fontSize * 2 }} />;
             }
-            // 空格：渲染空田字格
+            // 空格：隐形占位（固定网格用,不渲染格子但保持布局）
             if (char.isSpace && !char.isIndent) {
               return (
-                <div key={charIndex} className="flex flex-col items-center" style={{ width: `${cellWidth}px` }}>
-                  <div style={{ height: `${pinyinSize}px` }} />
-                  <TianZiGe size={gridSize} showReference={false} borderColor="#cccccc" />
+                <div
+                  key={charIndex}
+                  style={{
+                    width: `${cellWidth}px`,
+                    visibility: 'hidden',
+                  }}
+                >
+                  {/* 隐形占位:不画拼音/格子,只占布局空间 */}
                 </div>
               );
             }
@@ -180,7 +185,7 @@ function PinyinToHanziRenderer({ lines, style }: LineRendererProps) {
             }
             // 汉字：拼音+田字格作为一个整体
             // ⚠️ 不用 flex 布局:html2canvas 截图 SVG 时,flex items-center 会把子项垂直压缩
-            // 拼音区域和 SVG 之间必须有足够间距,避免 SVG 顶部覆盖拼音
+            // 拼音区域和 SVG 之间必须有真实 padding 间隔 (margin 在某些 html2canvas 渲染下被忽略)
             return (
               <div
                 key={charIndex}
@@ -188,25 +193,15 @@ function PinyinToHanziRenderer({ lines, style }: LineRendererProps) {
                   width: `${cellWidth}px`,
                   boxSizing: 'border-box',
                   textAlign: 'center',
-                  paddingTop: `${pinyinSize + 4}px`,
-                  position: 'relative',
+                  paddingTop: '6px', // 真实 padding,不是 spacer div
                 }}
               >
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '0',
-                    left: 0,
-                    right: 0,
-                    height: `${pinyinSize + 4}px`,
-                  }}
-                >
-                  <PinyinDisplay
-                    pinyin={char.pinyin}
-                    fontSize={pinyinSize}
-                    centered
-                  />
-                </div>
+                <PinyinDisplay
+                  pinyin={char.pinyin}
+                  fontSize={pinyinSize}
+                  centered
+                />
+                <div style={{ height: '6px', width: '1px', background: '#fff' }} /> {/* 1px 宽白色背景,让 html2canvas 看到 */}
                 <TianZiGe size={gridSize} showReference={false} />
               </div>
             );
@@ -251,13 +246,16 @@ function HanziToPinyinRenderer({ lines, style }: LineRendererProps) {
             if (char.isIndent) {
               return <div key={charIndex} style={{ width: fontSize * 2 }} />;
             }
-            // 空格：渲染空拼音格
+            // 空格:隐形占位 (固定网格)
             if (char.isSpace && !char.isIndent) {
               return (
-                <div key={charIndex} className="flex flex-col items-center" style={{ width: `${cellWidth}px` }}>
-                  <SiXianSanGe width={gridWidth} height={gridHeight} showReference={false} borderColor="#cccccc" />
-                  <div style={{ height: `${charSize}px` }} />
-                </div>
+                <div
+                  key={charIndex}
+                  style={{
+                    width: `${cellWidth}px`,
+                    visibility: 'hidden',
+                  }}
+                />
               );
             }
             if (char.isPunctuation) {

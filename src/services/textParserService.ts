@@ -332,3 +332,108 @@ export function toCharacterInfo(char: ParsedChar): CharacterInfo {
     isPolyphonic: char.isPolyphonic,
   };
 }
+
+/**
+ * 计算单行最大字符数 (固定网格方案)
+ * 公式: (containerWidth + letterSpacing) / (charWidth + letterSpacing)
+ */
+export function calculateMaxCharsPerLine(
+  containerWidth: number,
+  fontSize: number,
+  letterSpacing: number,
+  mode: 'pinyin-to-hanzi' | 'hanzi-to-pinyin' | 'review' | 'other'
+): number {
+  // 用一个标点宽度作为最小 cell 宽度(确保不留过大空白)
+  const testChar: ParsedChar = {
+    char: '测',
+    pinyin: 'cè',
+    isPolyphonic: false,
+    isPunctuation: false,
+    isNewline: false,
+    isSpace: false,
+    isIndent: false,
+  };
+  const cellWidth = getCharWidth(testChar, fontSize, mode) + letterSpacing;
+  return Math.max(1, Math.floor((containerWidth + letterSpacing) / cellWidth));
+}
+
+/**
+ * 固定网格分行:每行固定 N 个字符位置(汉字/标点),不够的用隐形占位符填满
+ * 优势:html2canvas 截图时每行 cell 数固定,布局像素稳定
+ */
+export function splitIntoFixedGridLines(
+  chars: ParsedChar[],
+  containerWidth: number,
+  fontSize: number,
+  letterSpacing: number,
+  mode: 'pinyin-to-hanzi' | 'hanzi-to-pinyin' | 'review' | 'other'
+): ParsedLine[] {
+  // 1) 计算每行最多能放 N 个汉字宽 = (containerWidth + letterSpacing) / (cellWidth + letterSpacing)
+  const testChar: ParsedChar = {
+    char: '测', pinyin: 'cè', isPolyphonic: false, isPunctuation: false,
+    isNewline: false, isSpace: false, isIndent: false,
+  };
+  const cellWidth = getCharWidth(testChar, fontSize, mode);
+  const maxChars = Math.max(1, Math.floor((containerWidth + letterSpacing) / (cellWidth + letterSpacing)));
+
+  // 2) 重新分行:按宽度累积,每行 N 个汉字宽
+  const lines: ParsedLine[] = [];
+  let currentLine: ParsedChar[] = [];
+  let currentWidth = 0;
+  let isFirstLineOfParagraph = true;
+
+  const tryAddChar = (char: ParsedChar): { pushed: boolean; needsNewline?: boolean } => {
+    const w = getCharWidth(char, fontSize, mode) + letterSpacing;
+    if (currentWidth + w > containerWidth + letterSpacing && currentLine.length > 0) {
+      // 标点规则:不允许标点行首
+      if (NO_LINE_START_REGEX.test(char.char)) {
+        const last = currentLine.pop()!;
+        lines.push({ chars: currentLine, isFirstLineOfParagraph });
+        currentLine = [last, char];
+        currentWidth = getCharWidth(last, fontSize, mode) + w;
+      } else {
+        lines.push({ chars: currentLine, isFirstLineOfParagraph });
+        currentLine = [char];
+        currentWidth = w;
+        isFirstLineOfParagraph = false;
+        return { pushed: true, needsNewline: true };
+      }
+      return { pushed: true };
+    } else {
+      currentLine.push(char);
+      currentWidth += w;
+      return { pushed: true };
+    }
+  };
+
+  for (let i = 0; i < chars.length; i++) {
+    const char = chars[i];
+    if (char.isNewline) {
+      if (currentLine.length > 0) {
+        lines.push({ chars: currentLine, isFirstLineOfParagraph });
+        currentLine = [];
+        currentWidth = 0;
+        isFirstLineOfParagraph = true;
+      }
+      continue;
+    }
+    tryAddChar(char);
+  }
+  if (currentLine.length > 0) {
+    lines.push({ chars: currentLine, isFirstLineOfParagraph });
+  }
+
+  // 3) 每行末尾填充隐形占位到 maxChars
+  return lines.map((line) => {
+    const remain = maxChars - line.chars.length;
+    if (remain <= 0) return line;
+    const fillers: ParsedChar[] = [];
+    for (let i = 0; i < remain; i++) {
+      fillers.push({
+        char: '', pinyin: '', isPolyphonic: false, isPunctuation: false,
+        isNewline: false, isSpace: true, isIndent: false,
+      });
+    }
+    return { chars: [...line.chars, ...fillers], isFirstLineOfParagraph: line.isFirstLineOfParagraph };
+  });
+}
