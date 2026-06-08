@@ -18,7 +18,7 @@ type ExportStatus = 'idle' | 'exporting-pdf' | 'exporting-image' | 'success' | '
 export function ExportButtons({
   targetRef,
   onPrint,
-  filename = 'pinyin-worksheet',
+  filename = '拼音练习',
   showImageExport = false,
   className = '',
 }: ExportButtonsProps) {

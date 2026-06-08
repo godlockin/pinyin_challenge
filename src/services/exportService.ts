@@ -26,7 +26,7 @@ export interface ExportOptions {
 
 // 默认配置
 const defaultOptions: Required<ExportOptions> = {
-  filename: 'pinyin-worksheet',
+  filename: '拼音练习',
   scale: 2,
   orientation: 'portrait',
   quality: 0.92,
@@ -212,7 +212,7 @@ export async function exportToPDF(
 
     // 保存
     const dateStr = new Date().toISOString().slice(0, 10);
-    pdf.save(`${config.filename}_${dateStr}.pdf`);
+    pdf.save(`拼音练习_${dateStr}.pdf`);
   } catch (error) {
     console.error('PDF 导出失败:', error);
     if (worksheetEl) {
@@ -284,7 +284,7 @@ async function exportSinglePage(
   );
 
   const dateStr = new Date().toISOString().slice(0, 10);
-  pdf.save(`${config.filename}_${dateStr}.pdf`);
+  pdf.save(`拼音练习_${dateStr}.pdf`);
 }
 
 /**
@@ -292,7 +292,7 @@ async function exportSinglePage(
  */
 export async function exportToImage(
   element: HTMLElement,
-  filename: string = 'pinyin-worksheet'
+  filename: string = '拼音练习'
 ): Promise<void> {
   try {
     const canvas = await html2canvas(element, {

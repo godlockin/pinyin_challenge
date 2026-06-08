@@ -49,7 +49,7 @@ function App() {
               <ExportButtons
                 targetRef={printRef}
                 onPrint={handlePrint}
-                filename="pinyin-worksheet"
+                filename="拼音练习"
                 showImageExport={true}
               />
             </div>

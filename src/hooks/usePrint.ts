@@ -20,7 +20,7 @@ export interface UsePrintReturn {
  */
 export function usePrint(options: UsePrintOptions = {}): UsePrintReturn {
   const {
-    documentTitle = '拼音练习题',
+    documentTitle = `拼音练习_${new Date().toISOString().slice(0, 10)}`,
     onBeforePrint,
     onAfterPrint,
     onPrintError,
