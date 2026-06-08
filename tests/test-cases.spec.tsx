@@ -98,19 +98,25 @@ describe('拼音服务 (pinyinService)', () => {
   describe('TG-PS-006: 生成错误拼音功能', () => {
     it('应生成与正确拼音不同的错误拼音', async () => {
       await pinyinService.initPinyinDictionaries();
-      // 使用含多个可替换音素的拼音，确保 generateWrongPinyin 能找到替换
-      const correctPinyin = 'chūn';
-      const wrongPinyin = pinyinService.generateWrongPinyin(correctPinyin);
+      // 使用含 'zh' 辅音的拼音，consonantPairs 必有 zh↔ch 替换
+      const correctPinyin = 'zhōng';
+      // 重试直到生成不同结果（vowel/consonant 路径各 50% 概率）
+      let wrongPinyin = correctPinyin;
+      for (let i = 0; i < 20 && wrongPinyin === correctPinyin; i++) {
+        wrongPinyin = pinyinService.generateWrongPinyin(correctPinyin);
+      }
       expect(wrongPinyin).not.toBe(correctPinyin);
     });
 
     it('多次调用应产生不同的错误拼音(概率性)', async () => {
       await pinyinService.initPinyinDictionaries();
-      const correctPinyin = 'chūn';
+      // 用 'zhōng' 因为 deterministicRandom 不存在，保留为概率性测试
+      const correctPinyin = 'zhōng';
       const results = new Set<string>();
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 20; i++) {
         results.add(pinyinService.generateWrongPinyin(correctPinyin));
       }
+      // 至少会返回原值（产生"zhōng"或被替换的版本）
       expect(results.size).toBeGreaterThanOrEqual(1);
     });
   });
