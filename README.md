@@ -1,3 +1,8 @@
+> **License**: PolyForm Noncommercial 1.0.0
+> Copyright (c) 2026 godlockin
+> 个人使用、二创、分发允许,需注明作者;**商业使用需作者书面授权**。
+> 详见 [LICENSE](./LICENSE)。
+
 # 拼音练习生成器 (Pinyin Challenge)
 
 一个面向小学语文教学的拼音练习题生成工具，支持多种练习模式、格式化排版和打印导出。
